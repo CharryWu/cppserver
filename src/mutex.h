@@ -15,9 +15,6 @@
 
 namespace cppserver {
 
-/**
- * @brief 信号量
- */
 class Semaphore : Noncopyable {
 public:
     /**
@@ -186,7 +183,6 @@ private:
  */
 class Mutex : Noncopyable {
 public:
-    /// 局部锁
     typedef ScopedLockImpl<Mutex> Lock;
 
     Mutex() {

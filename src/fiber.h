@@ -1,11 +1,3 @@
-/**
- * @file fiber.h
- * @brief 协程封装
- * @author sylar.yin
- * @email 564628276@qq.com
- * @date 2019-05-24
- * @copyright Copyright (c) 2019年 sylar.yin All rights reserved (www.sylar.top)
- */
 #ifndef __SYLAR_FIBER_H__
 #define __SYLAR_FIBER_H__
 
@@ -17,93 +9,75 @@ namespace cppserver {
 
 class Scheduler;
 
-/**
- * @brief 协程类
- */
 class Fiber : public std::enable_shared_from_this<Fiber> {
 friend class Scheduler;
 public:
     typedef std::shared_ptr<Fiber> ptr;
 
     /**
-     * @brief 协程状态
+     * @brief Fiber states
      */
     enum State {
-        /// 初始化状态
         INIT,
-        /// 暂停状态
-        HOLD,
-        /// 执行中状态
-        EXEC,
-        /// 结束状态
-        TERM,
-        /// 可执行状态
-        READY,
-        /// 异常状态
-        EXCEPT
+        HOLD, // paused state
+        EXEC, // executing state
+        TERM, // termination state
+        READY, // ready to be executed
+        EXCEPT // exception
     };
 private:
     /**
-     * @brief 无参构造函数
-     * @attention 每个线程第一个协程的构造
+     * @brief No arg ctor
+     * @attention The first fiber construct in the thread
      */
     Fiber();
 
 public:
     /**
-     * @brief 构造函数
-     * @param[in] cb 协程执行的函数
-     * @param[in] stacksize 协程栈大小
-     * @param[in] use_caller 是否在MainFiber上调度
+     * @brief Ctor
+     * @param[in] cb Callback function to be execed by fiber
+     * @param[in] stacksize Stack size of fiber
+     * @param[in] use_caller Whether called on mainfiber
      */
     Fiber(std::function<void()> cb, size_t stacksize = 0, bool use_caller = false);
-
-    /**
-     * @brief 析构函数
-     */
     ~Fiber();
 
     /**
-     * @brief 重置协程执行函数,并设置状态
-     * @pre getState() 为 INIT, TERM, EXCEPT
+     * @brief Reset execution function
+     * @pre getState() is one of INIT, TERM, EXCEPT
      * @post getState() = INIT
      */
     void reset(std::function<void()> cb);
 
     /**
-     * @brief 将当前协程切换到运行状态
+     * @brief Move fiber to execution state
      * @pre getState() != EXEC
      * @post getState() = EXEC
      */
     void swapIn();
 
     /**
-     * @brief 将当前协程切换到后台
+     * @brief Move fiber to ready state
      */
     void swapOut();
 
     /**
-     * @brief 将当前线程切换到执行状态
-     * @pre 执行的为当前线程的主协程
+     * @brief swap fiber to exec state
+     * @pre caller is the main fiber in thread
      */
     void call();
 
     /**
-     * @brief 将当前线程切换到后台
-     * @pre 执行的为该协程
-     * @post 返回到线程的主协程
+     * @brief swap fiber to backend
+     * @pre caller is current fiber
+     * @post return to main fiber in thread
      */
     void back();
 
-    /**
-     * @brief 返回协程id
-     */
-    uint64_t getId() const { return m_id;}
 
-    /**
-     * @brief 返回协程状态
-     */
+    uint64_t getId() const { return m_id;}
     State getState() const { return m_state;}
+
 public:
 
     /**
@@ -113,55 +87,55 @@ public:
     static void SetThis(Fiber* f);
 
     /**
-     * @brief 返回当前所在的协程
+     * @brief return current fiber
      */
     static Fiber::ptr GetThis();
 
     /**
-     * @brief 将当前协程切换到后台,并设置为READY状态
+     * @brief switch fiber to backend and set to ready state
      * @post getState() = READY
      */
     static void YieldToReady();
 
     /**
-     * @brief 将当前协程切换到后台,并设置为HOLD状态
+     * @brief switch fiber to backend and set to hold state
      * @post getState() = HOLD
      */
     static void YieldToHold();
 
     /**
-     * @brief 返回当前协程的总数量
+     * @brief return total number of fibers
      */
     static uint64_t TotalFibers();
 
     /**
      * @brief 协程执行函数
-     * @post 执行完成返回到线程主协程
+     * @post return to fiber main thread
      */
     static void MainFunc();
 
     /**
-     * @brief 协程执行函数
-     * @post 执行完成返回到线程调度协程
+     * @brief exec function
+     * @post return to scheduler
      */
     static void CallerMainFunc();
 
     /**
-     * @brief 获取当前协程的id
+     * @brief return current fiber id
      */
     static uint64_t GetFiberId();
 private:
-    /// 协程id
+    /// fiber id
     uint64_t m_id = 0;
-    /// 协程运行栈大小
+    /// stack size of fiber
     uint32_t m_stacksize = 0;
-    /// 协程状态
+    /// fiber state enum
     State m_state = INIT;
-    /// 协程上下文
+    /// fiber exec context
     ucontext_t m_ctx;
-    /// 协程运行栈指针
+    /// fiber stack pointer
     void* m_stack = nullptr;
-    /// 协程运行函数
+    /// function to be executed by fiber
     std::function<void()> m_cb;
 };
 
