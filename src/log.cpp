@@ -57,6 +57,7 @@ namespace cppserver
 
     FileLogAppender::FileLogAppender(const std::string &filename) : m_filename(filename)
     {
+        reopen(); // don't forget the file should be reopened
     }
 
     void FileLogAppender::log(LogLevel level, LogEvent::ptr event)
@@ -77,20 +78,19 @@ namespace cppserver
         !!m_filestream;
     }
 
-    void StdoutLogAppender::log(LogLevel level, LogEvent::ptr event)
+    void StdoutLogAppender::log(std::shared_ptr<Logger> logger, LogLevel level, LogEvent::ptr event) {
     {
         if (level >= m_level)
         {
-            std::cout << m_formatter->format(event);
+            m_formatter->format(std::cout, logger, level, event);
         }
     }
 
-    std::string LogFormatter::format(LogEvent::ptr event)
-    {
+    std::string LogFormatter::format(std::shared_ptr<Logger> logger, LogLevel level, LogEvent::ptr event) {
         std::stringstream ss;
         for (const auto &i : m_items)
         {
-            i->format(ss, event);
+            i->format(ss, logger, level, event);
         }
         return ss.str();
     }
@@ -103,17 +103,18 @@ namespace cppserver
         std::string str; // store non-token characters
         for (size_t i = 0; i < m_pattern.size(); ++i)
         {
-            // non-format characters
+            // regular character: skip
             if (m_pattern[i] != '%')
             {
                 str.append(1, m_pattern[i]);
                 continue;
             }
             size_t n = i + 1;
-            int fmt_status = 0; // 1 => inside bracket
+            int fmt_status = 0; // 0 => outside bracket, 1 => inside bracket
+            size_t fmt_begin = 0;
+
             std::string str;
             std::string fmt;
-            size_t fmt_begin = 0;
 
             while (n < m_pattern.size())
             {
@@ -126,6 +127,7 @@ namespace cppserver
                 {
                     if (m_pattern[n] == '{')
                     {
+                        // mark as begin of left bracket
                         str = m_pattern.substr(i + 1, n - i - 1);
                         fmt_status = 1; // parse format
                         fmt_begin = n;
@@ -137,6 +139,7 @@ namespace cppserver
                 {
                     if (m_pattern[n] == '}')
                     {
+                        // mark as end of right bracket
                         fmt = m_pattern.substr(fmt_begin + 1, n - fmt_begin - 1);
                         fmt_status = 2;
                         ++n;

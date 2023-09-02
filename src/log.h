@@ -42,6 +42,7 @@ namespace cppserver
     class Logger
     {
     public:
+        typedef Spinlock MutexType;
         typedef std::shared_ptr<Logger> ptr;
         Logger(const std::string &name = "root");
         void log(LogLevel level, const LogEvent::ptr event);
@@ -51,13 +52,22 @@ namespace cppserver
         void fatal(LogEvent::ptr event);
         void addAppender(LogAppender::ptr appender);
         void delAppender(LogAppender::ptr appender);
+        void clearAppenders(); // remove all appenders
         LogLevel getLevel() const { return m_level; }
         void setLevel(LogLevel val) { m_level = val; }
+        const std::string& getName() const { return m_name; }
+        void setFormatter(LogFormatter::ptr val);
+        void setFormatter(const std::string& val);
+        LogFormatter::ptr getFormatter();
+        std::string toYamlString();
 
     private:
         std::string m_name;                      // name of logger
         LogLevel m_level;                        // NOTE: logs will be filtered based on logger m_level
+        MutexType m_mutex;
         std::list<LogAppender::ptr> m_appenders; // collection of log output destinations, single log can be outputted to multiple destinations
+        LogFormatter::ptr m_formatter;
+        Logger::ptr m_root;
     };
 
     class LogFormatter
@@ -65,7 +75,7 @@ namespace cppserver
     public:
         typedef std::shared_ptr<LogFormatter> ptr;
         LogFormatter(const std::string &pattern);
-        std::string format(LogEvent::ptr event);
+        std::string format(std::shared_ptr<Logger> logger, LogLevel level, LogEvent::ptr event);
 
     public:
         // submodule for log formats
@@ -99,7 +109,12 @@ namespace cppserver
         // the base class should be defined with a virtual destructor.
         // https://www.geeksforgeeks.org/virtual-destructor/#
         virtual ~LogAppender();
-        virtual void log(LogLevel level, const LogEvent::ptr event) = 0;
+        virtual void log(std::shared_ptr<Logger> logger, LogLevel level, LogEvent::ptr event) = 0;
+        virtual std::string toYamlString() = 0;
+        void setFormatter(LogFormatter::ptr val);
+        LogFormatter::ptr getFormatter();
+        LogLevel getLevel() const { return m_level; }
+        void setLevel(LogLevel val) { m_level = val; }
 
     protected:
         LogLevel m_level;
@@ -111,7 +126,8 @@ namespace cppserver
     {
     public:
         typedef std::shared_ptr<StdoutLogAppender> ptr;
-        void log(LogLevel level, LogEvent::ptr event) override; // https://en.cppreference.com/w/cpp/language/override
+        void log(Logger::ptr logger, LogLevel level, LogEvent::ptr event) override; // https://en.cppreference.com/w/cpp/language/override
+        std::string toYamlString() override;
 
     private:
     };
@@ -124,6 +140,7 @@ namespace cppserver
         FileLogAppender(const std::string &filename);
         void log(LogLevel level, LogEvent::ptr event) override; // https://en.cppreference.com/w/cpp/language/override
         bool reopen();                                          // reopen the file, return true if open success, false otherwise
+        std::string toYamlString() override;
 
     private:
         std::string m_filename;
