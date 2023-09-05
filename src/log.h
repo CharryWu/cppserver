@@ -138,13 +138,14 @@ namespace cppserver
     public:
         typedef std::shared_ptr<StdoutLogAppender> ptr;
         FileLogAppender(const std::string &filename);
-        void log(LogLevel level, LogEvent::ptr event) override; // https://en.cppreference.com/w/cpp/language/override
+        void log(Logger::ptr logger, LogLevel level, LogEvent::ptr event) override; // https://en.cppreference.com/w/cpp/language/override
         bool reopen();                                          // reopen the file, return true if open success, false otherwise
         std::string toYamlString() override;
 
     private:
         std::string m_filename;
         std::ofstream m_filestream;
+        uint64_t m_lastTime = 0;
     };
 
 } // namespace cppserver
