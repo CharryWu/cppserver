@@ -22,6 +22,7 @@ namespace cppserver
         FATAL = 5
     };
 
+    // Each LogEvent represents one log
     class LogEvent
     {
     public:
@@ -38,7 +39,7 @@ namespace cppserver
         std::string m_content;        //
     };
 
-    // Log output
+    // 日志器
     class Logger
     {
     public:
@@ -100,6 +101,7 @@ namespace cppserver
         bool has_error = false;
     };
 
+    // 日志输出地
     class LogAppender
     {
     public:
